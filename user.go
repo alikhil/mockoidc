@@ -31,6 +31,7 @@ type MockUser struct {
 	Phone             string
 	Address           string
 	Groups            []string
+	CustomClaims      interface{}
 }
 
 // DefaultUser returns a default MockUser that is set in
@@ -54,7 +55,7 @@ type mockUserinfo struct {
 	Phone             string   `json:"phone_number,omitempty"`
 	Address           string   `json:"address,omitempty"`
 	Groups            []string `json:"groups,omitempty"`
-	EmailVerified     bool     `json:"email_verified"`
+	EmailVerified     bool     `json:"email_verified,omitempty"`
 }
 
 func (u *MockUser) ID() string {
@@ -74,7 +75,37 @@ func (u *MockUser) Userinfo(scope []string) ([]byte, error) {
 		EmailVerified:     user.EmailVerified,
 	}
 
-	return json.Marshal(info)
+	if u.CustomClaims == nil {
+		return json.Marshal(info)
+	}
+
+	jsonInfo, err := json.Marshal(info)
+	if err != nil {
+		return nil, err
+	}
+
+	otherClaims, err := json.Marshal(u.CustomClaims)
+	if err != nil {
+		return nil, err
+	}
+
+	infoMap := make(map[string]interface{})
+	err = json.Unmarshal(jsonInfo, &infoMap)
+	if err != nil {
+		return nil, err
+	}
+
+	otherMap := make(map[string]interface{})
+	err = json.Unmarshal(otherClaims, &otherMap)
+	if err != nil {
+		return nil, err
+	}
+
+	for k, v := range otherMap {
+		infoMap[k] = v
+	}
+
+	return json.Marshal(infoMap)
 }
 
 type mockClaims struct {
